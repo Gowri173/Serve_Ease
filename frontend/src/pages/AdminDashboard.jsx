@@ -43,7 +43,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="container mx-auto px-6 py-8 relative z-10">
+    <div className="container mx-auto px-6 pt-32 pb-12 relative z-10">
       <h1 className="text-4xl font-display font-bold mb-8">System Analytics</h1>
       
       {/* Soft Tabs */}

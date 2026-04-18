@@ -36,7 +36,7 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[75vh] px-4 py-12 relative z-10">
+    <div className="flex items-center justify-center min-h-screen px-4 pt-32 pb-12 relative z-10">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -z-10" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
         <GlassCard>

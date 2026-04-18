@@ -93,7 +93,7 @@ const CaptainDashboard = () => {
   const completedRequests = requests.filter(r => r.status === 'completed');
 
   return (
-    <div className="container mx-auto px-6 py-8 relative z-10">
+    <div className="container mx-auto px-6 pt-32 pb-12 relative z-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
         <div>
           <h1 className="text-3xl font-display font-bold mb-1">Mission Control</h1>

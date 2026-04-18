@@ -93,11 +93,10 @@ const UserDashboard = () => {
     setSelectedBookingForPayment(booking);
     setIsPaymentModalOpen(true);
   };
-
   return (
-    <div className="container mx-auto px-4 md:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+    <div className="container mx-auto px-4 md:px-8 pt-32 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
       {/* Left Column: Booking Form & Map */}
-      <div className="lg:col-span-7 space-y-6">
+      <div id="book-service" className="lg:col-span-7 space-y-6">
         <GlassCard>
           <h2 className="text-2xl font-display font-bold mb-2">Book a Service</h2>
           <p className="text-sm opacity-70 mb-6">Drop a pin on your location to request assistance.</p>
@@ -127,7 +126,7 @@ const UserDashboard = () => {
               >
                 <option value="" disabled>Choose a service</option>
                 {services.map(s => (
-                  <option key={s._id} value={s._id}>{s.name} - ${s.basePrice}</option>
+                  <option key={s._id} value={s._id}>{s.name} - ₹{s.basePrice}</option>
                 ))}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-sm">
@@ -142,9 +141,10 @@ const UserDashboard = () => {
       </div>
 
       {/* Right Column: Bookings History */}
-      <div className="lg:col-span-5 space-y-6">
-        <GlassCard className="h-full">
-          <h2 className="text-xl font-display font-bold mb-6 border-b border-white/10 pb-4">Activity Log</h2>
+      <div id="activity-log" className="lg:col-span-5 space-y-6">
+        <h2 className="text-xl font-display font-bold mb-6 border-b border-white/10 pb-4">Activity Log</h2>
+        <GlassCard className="lg:col-span-2 max-h-[300px] overflow-y-auto">
+
           {myBookings.length === 0 ? (
             <div className="text-center py-12 opacity-50">
               <span className="text-3xl mb-2 block">📝</span>
@@ -187,12 +187,12 @@ const UserDashboard = () => {
           )}
         </GlassCard>
       </div>
-      
-      <PaymentModal 
-        isOpen={isPaymentModalOpen} 
-        onClose={() => setIsPaymentModalOpen(false)} 
-        booking={selectedBookingForPayment} 
-        onSuccess={fetchBookings} 
+
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        booking={selectedBookingForPayment}
+        onSuccess={fetchBookings}
       />
     </div>
   );
