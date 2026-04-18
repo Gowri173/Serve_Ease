@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { setCredentials } from '../store/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,6 +10,7 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { motion } from 'framer-motion';
+import WithdrawalModal from '../components/WithdrawalModal';
 
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -26,6 +28,8 @@ const CaptainDashboard = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!user || user.role !== 'captain') {
@@ -58,9 +62,21 @@ const CaptainDashboard = () => {
     try {
       const { data } = await api.get('/bookings/captain');
       setRequests(data);
+      
+      const { data: profile } = await api.get('/auth/profile');
+      dispatch(setCredentials(profile));
     } catch (error) {
       toast.error('Failed to fetch requests');
     }
+  };
+
+  const handleWithdrawClick = () => {
+    if (!user.earnings || user.earnings <= 0) return;
+    setIsWithdrawalModalOpen(true);
+  };
+
+  const handleWithdrawSuccess = () => {
+    dispatch(setCredentials({ ...user, earnings: 0 }));
   };
 
   const handleStatusChange = async (bookingId, newStatus) => {
@@ -75,9 +91,6 @@ const CaptainDashboard = () => {
 
   const displayedRequests = requests.filter(r => ['requested', 'accepted', 'in_progress'].includes(r.status));
   const completedRequests = requests.filter(r => r.status === 'completed');
-  // Earnings are only credited for PAID requests, minus 20% platform fee
-  const paidRequests = completedRequests.filter(r => r.paymentStatus === 'paid');
-  const totalEarnings = paidRequests.reduce((sum, req) => sum + (req.price * 0.8), 0);
 
   return (
     <div className="container mx-auto px-6 py-8 relative z-10">
@@ -170,10 +183,24 @@ const CaptainDashboard = () => {
       <div className="mt-12 mb-8">
         <h2 className="text-2xl font-display font-bold mb-6">Service History & Earnings</h2>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <GlassCard className="lg:col-span-1 flex flex-col justify-center items-center text-center">
-            <p className="text-sm opacity-70 mb-2">Total Earnings</p>
-            <p className="text-5xl font-display font-bold text-gradient">${totalEarnings}</p>
-            <p className="text-xs opacity-50 mt-4">{completedRequests.length} Jobs Completed</p>
+          <GlassCard className="lg:col-span-1 flex flex-col justify-center items-center text-center py-10 relative overflow-hidden">
+            <p className="text-sm opacity-70 mb-2">Available Balance</p>
+            <p className="text-5xl font-display font-bold text-gradient mb-6">
+              ${(user?.earnings || 0).toFixed(2)}
+            </p>
+            
+            <button 
+              onClick={handleWithdrawClick}
+              disabled={!user?.earnings || user.earnings <= 0}
+              className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${
+                (!user?.earnings || user.earnings <= 0) 
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 shadow-none' 
+                : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20 cursor-pointer'
+              }`}
+            >
+              Withdraw to Bank
+            </button>
+            <p className="text-xs opacity-50 mt-4">{completedRequests.length} Lifetime Jobs Completed</p>
           </GlassCard>
 
           <GlassCard className="lg:col-span-2 max-h-[300px] overflow-y-auto">
@@ -205,6 +232,13 @@ const CaptainDashboard = () => {
           </GlassCard>
         </div>
       </div>
+      
+      <WithdrawalModal 
+        isOpen={isWithdrawalModalOpen} 
+        onClose={() => setIsWithdrawalModalOpen(false)} 
+        user={user} 
+        onSuccess={handleWithdrawSuccess} 
+      />
     </div>
   );
 };

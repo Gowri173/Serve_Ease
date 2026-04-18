@@ -61,7 +61,8 @@ const registerCaptain = async (req, res) => {
       email: captain.email,
       role: 'captain',
       serviceType: captain.serviceType,
-      isApproved: captain.isApproved
+      isApproved: captain.isApproved,
+      earnings: captain.earnings || 0
     });
   } else {
     res.status(400).json({ message: 'Invalid captain data' });
@@ -96,7 +97,8 @@ const login = async (req, res) => {
       _id: account._id,
       name: account.name,
       email: account.email,
-      role: role || account.role
+      role: role || account.role,
+      ...(account.role === 'captain' && { earnings: account.earnings || 0 })
     });
   } else {
     res.status(401).json({ message: 'Invalid email or password' });
@@ -126,10 +128,43 @@ const getProfile = async (req, res) => {
       name: account.name,
       email: account.email,
       role: account.role,
-      ...(account.role === 'captain' && { serviceType: account.serviceType, isApproved: account.isApproved, isAvailable: account.isAvailable })
+      ...(account.role === 'captain' && { 
+        serviceType: account.serviceType, 
+        isApproved: account.isApproved, 
+        isAvailable: account.isAvailable,
+        earnings: account.earnings || 0 
+      })
     });
   } else {
     res.status(404).json({ message: 'User not found' });
+  }
+};
+
+// @desc    Withdraw captain earnings
+// @route   POST /api/auth/withdraw
+// @access  Private (Captain)
+const withdrawEarnings = async (req, res) => {
+  try {
+    const captain = await Captain.findById(req.user._id);
+    
+    if (!captain) {
+      return res.status(404).json({ message: 'Captain not found' });
+    }
+
+    if (!captain.earnings || captain.earnings <= 0) {
+      return res.status(400).json({ message: 'No earnings to withdraw' });
+    }
+
+    // Simulate bank transfer delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const amountWithdrawn = captain.earnings;
+    captain.earnings = 0; // Reset earnings after successful bank transfer
+    await captain.save();
+
+    res.json({ message: 'Transfer to bank successful', amount: amountWithdrawn });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -138,5 +173,6 @@ module.exports = {
   registerCaptain,
   login,
   logout,
-  getProfile
+  getProfile,
+  withdrawEarnings
 };

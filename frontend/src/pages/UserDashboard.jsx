@@ -8,6 +8,7 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import L from 'leaflet';
 import { motion } from 'framer-motion';
+import PaymentModal from '../components/PaymentModal';
 
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -37,6 +38,8 @@ const UserDashboard = () => {
   const [selectedService, setSelectedService] = useState('');
   const [position, setPosition] = useState(null);
   const [myBookings, setMyBookings] = useState([]);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState(null);
 
   useEffect(() => {
     if (!user || user.role !== 'user') {
@@ -86,14 +89,9 @@ const UserDashboard = () => {
     }
   };
 
-  const handlePayment = async (bookingId) => {
-    try {
-      await api.post(`/bookings/${bookingId}/pay`);
-      toast.success('Payment successful!');
-      fetchBookings();
-    } catch (error) {
-      toast.error('Payment failed');
-    }
+  const handlePaymentClick = (booking) => {
+    setSelectedBookingForPayment(booking);
+    setIsPaymentModalOpen(true);
   };
 
   return (
@@ -174,7 +172,7 @@ const UserDashboard = () => {
                     </div>
                   )}
                   {booking.status === 'completed' && booking.paymentStatus === 'pending' && (
-                    <button onClick={() => handlePayment(booking._id)} className="mt-4 w-full py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors border border-indigo-500/20">
+                    <button onClick={() => handlePaymentClick(booking)} className="mt-4 w-full py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors border border-indigo-500/20 cursor-pointer">
                       Process Payment
                     </button>
                   )}
@@ -189,6 +187,13 @@ const UserDashboard = () => {
           )}
         </GlassCard>
       </div>
+      
+      <PaymentModal 
+        isOpen={isPaymentModalOpen} 
+        onClose={() => setIsPaymentModalOpen(false)} 
+        booking={selectedBookingForPayment} 
+        onSuccess={fetchBookings} 
+      />
     </div>
   );
 };
