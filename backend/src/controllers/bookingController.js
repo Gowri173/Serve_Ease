@@ -7,7 +7,7 @@ const Captain = require('../models/Captain');
 const createBooking = async (req, res) => {
   try {
     const { serviceId, serviceName, date, lat, lng, address, price } = req.body;
-    
+
     // 1. Find an available captain that matches the serviceType
     // For simplicity, we just find any available captain with matching service
     // In a real app, we would calculate distance using geospatial queries
@@ -79,7 +79,7 @@ const getCaptainBookings = async (req, res) => {
     .populate('service', 'name')
     .populate('user', 'name')
     .sort('-createdAt');
-    
+
   res.json(bookings);
 };
 
@@ -92,12 +92,12 @@ const updateBookingStatus = async (req, res) => {
 
   if (booking) {
     booking.status = status;
-    
+
     if (status === 'accepted') {
       // Captain accepts it
       booking.captain = req.user._id;
     }
-    
+
     const updatedBooking = await booking.save();
 
     // Notify user via Socket.io
@@ -116,9 +116,13 @@ const updateBookingStatus = async (req, res) => {
 const processMockPayment = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    
+
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.paymentStatus === 'paid') {
+      return res.status(400).json({ message: 'Already paid' });
     }
 
     // Simulate payment processing time
@@ -126,6 +130,18 @@ const processMockPayment = async (req, res) => {
 
     booking.paymentStatus = 'paid';
     const updatedBooking = await booking.save();
+
+    // Credit captain, cutting 20% platform charge
+    if (booking.captain) {
+      const captain = await Captain.findById(booking.captain);
+      if (captain) {
+        const platformFeePercentage = 0.20; // 20% cut
+        const captainCut = booking.price * (1 - platformFeePercentage);
+
+        captain.earnings = (captain.earnings || 0) + captainCut;
+        await captain.save();
+      }
+    }
 
     res.json({ message: 'Payment successful', booking: updatedBooking });
   } catch (error) {
