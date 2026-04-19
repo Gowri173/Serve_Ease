@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: 'https://team-delta-uzst.onrender.com/api',
   withCredentials: true, // important for cookies
 });
 
