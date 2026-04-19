@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import UserDashboard from './pages/UserDashboard';
 import CaptainDashboard from './pages/CaptainDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ChatbotWidget from './components/ChatbotWidget';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -23,6 +24,9 @@ function App() {
           <Route path="/captain-dashboard" element={<CaptainDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
         </Routes>
+
+        {/* Global Components */}
+        <ChatbotWidget />
         <ToastContainer theme="dark" position="bottom-right" />
       </div>
     </Router>

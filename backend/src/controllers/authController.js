@@ -1,13 +1,14 @@
 const User = require('../models/User');
 const Captain = require('../models/Captain');
 const Admin = require('../models/Admin');
+const Service = require('../models/Service');
 const generateToken = require('../utils/generateToken');
 
 // @desc    Register a new user
 // @route   POST /api/auth/register/user
 // @access  Public
 const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, phone } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -18,7 +19,8 @@ const registerUser = async (req, res) => {
   const user = await User.create({
     name,
     email,
-    password
+    password,
+    phone
   });
 
   if (user) {
@@ -27,6 +29,7 @@ const registerUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role
     });
   } else {
@@ -38,7 +41,7 @@ const registerUser = async (req, res) => {
 // @route   POST /api/auth/register/captain
 // @access  Public
 const registerCaptain = async (req, res) => {
-  const { name, email, password, serviceType } = req.body;
+  const { name, email, password, phone, serviceType, customService, isCustomService } = req.body;
 
   const captainExists = await Captain.findOne({ email });
 
@@ -46,26 +49,57 @@ const registerCaptain = async (req, res) => {
     return res.status(400).json({ message: 'Captain already exists' });
   }
 
-  const captain = await Captain.create({
-    name,
-    email,
-    password,
-    serviceType
-  });
+  try {
+    let finalServiceType = serviceType;
 
-  if (captain) {
-    generateToken(res, captain._id, 'captain');
-    res.status(201).json({
-      _id: captain._id,
-      name: captain.name,
-      email: captain.email,
-      role: 'captain',
-      serviceType: captain.serviceType,
-      isApproved: captain.isApproved,
-      earnings: captain.earnings || 0
+    // If it's a custom service, create it in the database using the entered custom service name
+    if (isCustomService && customService) {
+      const trimmedServiceType = customService.trim();
+
+      if (trimmedServiceType.length < 2) {
+        return res.status(400).json({ message: 'Service name must be at least 2 characters' });
+      }
+
+      // Check if service already exists (case-insensitive)
+      const serviceExists = await Service.findOne({ name: { $regex: `^${trimmedServiceType}$`, $options: 'i' } });
+      if (!serviceExists) {
+        // Create the new service
+        await Service.create({
+          name: trimmedServiceType,
+          description: `${trimmedServiceType} service`,
+          basePrice: 500 // Default base price in INR
+        });
+        finalServiceType = trimmedServiceType;
+      } else {
+        finalServiceType = serviceExists.name; // Use the stored service name casing
+      }
+    }
+
+    const captain = await Captain.create({
+      name,
+      email,
+      password,
+      phone,
+      serviceType: finalServiceType
     });
-  } else {
-    res.status(400).json({ message: 'Invalid captain data' });
+
+    if (captain) {
+      generateToken(res, captain._id, 'captain');
+      res.status(201).json({
+        _id: captain._id,
+        name: captain.name,
+        email: captain.email,
+        phone: captain.phone,
+        role: 'captain',
+        serviceType: captain.serviceType,
+        isApproved: captain.isApproved,
+        earnings: captain.earnings || 0
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid captain data' });
+    }
+  } catch (error) {
+    res.status(400).json({ message: error.message || 'Registration failed' });
   }
 };
 
@@ -111,6 +145,9 @@ const login = async (req, res) => {
 const logout = (req, res) => {
   res.cookie('jwt', '', {
     httpOnly: true,
+    secure: process.env.NODE_ENV !== 'development',
+    sameSite: process.env.NODE_ENV !== 'development' ? 'none' : 'lax',
+    path: '/',
     expires: new Date(0)
   });
   res.status(200).json({ message: 'Logged out successfully' });
@@ -127,12 +164,49 @@ const getProfile = async (req, res) => {
       _id: account._id,
       name: account.name,
       email: account.email,
+      phone: account.phone,
       role: account.role,
-      ...(account.role === 'captain' && { 
-        serviceType: account.serviceType, 
-        isApproved: account.isApproved, 
+      ...(account.role === 'captain' && {
+        serviceType: account.serviceType,
+        isApproved: account.isApproved,
         isAvailable: account.isAvailable,
-        earnings: account.earnings || 0 
+        earnings: account.earnings || 0,
+        rating: account.rating || 0
+      })
+    });
+  } else {
+    res.status(404).json({ message: 'User not found' });
+  }
+};
+
+// @desc    Update user/captain profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
+  const account = req.user;
+
+  if (account) {
+    account.name = req.body.name || account.name;
+    account.phone = req.body.phone || account.phone;
+
+    if (req.body.password) {
+      account.password = req.body.password;
+    }
+
+    const updatedAccount = await account.save();
+
+    res.json({
+      _id: updatedAccount._id,
+      name: updatedAccount.name,
+      email: updatedAccount.email,
+      phone: updatedAccount.phone,
+      role: updatedAccount.role,
+      ...(updatedAccount.role === 'captain' && {
+        serviceType: updatedAccount.serviceType,
+        isApproved: updatedAccount.isApproved,
+        isAvailable: updatedAccount.isAvailable,
+        earnings: updatedAccount.earnings || 0,
+        rating: updatedAccount.rating || 0
       })
     });
   } else {
@@ -146,7 +220,7 @@ const getProfile = async (req, res) => {
 const withdrawEarnings = async (req, res) => {
   try {
     const captain = await Captain.findById(req.user._id);
-    
+
     if (!captain) {
       return res.status(404).json({ message: 'Captain not found' });
     }
@@ -174,5 +248,6 @@ module.exports = {
   login,
   logout,
   getProfile,
+  updateProfile,
   withdrawEarnings
 };

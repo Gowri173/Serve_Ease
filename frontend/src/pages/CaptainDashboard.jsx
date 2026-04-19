@@ -10,7 +10,9 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import { motion } from 'framer-motion';
+import { FiUser, FiPhone } from 'react-icons/fi';
 import WithdrawalModal from '../components/WithdrawalModal';
+import ProfileModal from '../components/ProfileModal';
 
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -29,6 +31,7 @@ const CaptainDashboard = () => {
   const [requests, setRequests] = useState([]);
   const [isAvailable, setIsAvailable] = useState(true);
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -37,7 +40,7 @@ const CaptainDashboard = () => {
       return;
     }
 
-    const socket = io('http://localhost:5000');
+    const socket = io('http://localhost:8000');
 
     socket.emit('join', user._id);
 
@@ -56,13 +59,30 @@ const CaptainDashboard = () => {
     fetchRequests();
 
     return () => socket.disconnect();
-  }, [user, navigate]);
+  }, [user?._id, user?.role, user?.serviceType, navigate]);
+
+  useEffect(() => {
+    if (!user || user.role !== 'captain') return;
+
+    const activeRequest = requests.find(r => ['accepted', 'in_progress'].includes(r.status));
+    if (!activeRequest) return;
+
+    const interval = setInterval(() => {
+      if (!navigator.geolocation) return;
+
+      navigator.geolocation.getCurrentPosition(async ({ coords }) => {
+        await updateBookingLocation(activeRequest._id, coords.latitude, coords.longitude);
+      });
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [requests, user?._id, user?.role]);
 
   const fetchRequests = async () => {
     try {
       const { data } = await api.get('/bookings/captain');
       setRequests(data);
-      
+
       const { data: profile } = await api.get('/auth/profile');
       dispatch(setCredentials(profile));
     } catch (error) {
@@ -79,10 +99,23 @@ const CaptainDashboard = () => {
     dispatch(setCredentials({ ...user, earnings: 0 }));
   };
 
+  const updateBookingLocation = async (bookingId, lat, lng) => {
+    try {
+      await api.put(`/bookings/${bookingId}/location`, { lat, lng });
+    } catch (error) {
+      console.warn('Failed to update captain location', error);
+    }
+  };
+
   const handleStatusChange = async (bookingId, newStatus) => {
     try {
       await api.put(`/bookings/${bookingId}/status`, { status: newStatus });
       toast.success(`Booking marked as ${newStatus}`);
+
+      if ((newStatus === 'accepted' || newStatus === 'in_progress') && user?.currentLocation?.lat && user?.currentLocation?.lng) {
+        await updateBookingLocation(bookingId, user.currentLocation.lat, user.currentLocation.lng);
+      }
+
       fetchRequests();
     } catch (error) {
       toast.error('Failed to update status');
@@ -100,16 +133,36 @@ const CaptainDashboard = () => {
           <p className="text-sm opacity-70">Specialization: <span className="text-indigo-400 font-medium">{user?.serviceType}</span></p>
         </div>
 
-        <GlassCard className="!p-3 !px-5 flex items-center gap-4 mt-4 md:mt-0">
-          <span className="text-sm font-medium opacity-80">Receiving Signals</span>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" className="sr-only peer" checked={isAvailable} onChange={() => setIsAvailable(!isAvailable)} />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-          </label>
-        </GlassCard>
+        <div className="flex items-center gap-4 mt-4 md:mt-0">
+          <button 
+            onClick={() => setIsProfileModalOpen(true)}
+            className="px-5 py-2 h-[48px] bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl transition-colors font-medium text-sm flex items-center gap-2"
+          >
+            <FiUser className="text-indigo-400" /> Profile
+          </button>
+
+          <GlassCard className="!p-3 !px-5 h-[48px] flex items-center gap-4">
+            <span className="text-sm font-medium opacity-80">Receiving Signals</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" className="sr-only peer" checked={isAvailable && user?.isApproved} onChange={() => setIsAvailable(!isAvailable)} disabled={!user?.isApproved} />
+              <div className={`w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all ${user?.isApproved ? 'peer-checked:bg-indigo-500' : 'opacity-50 cursor-not-allowed'}`}></div>
+            </label>
+          </GlassCard>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {!user?.isApproved ? (
+        <div className="py-16 text-center">
+          <GlassCard className="max-w-md mx-auto p-8 border-yellow-500/30">
+            <div className="text-5xl mb-4">⏳</div>
+            <h3 className="text-xl font-bold text-yellow-400 mb-2">Pending Admin Approval</h3>
+            <p className="text-sm opacity-70">
+              Your account is currently under review by our administration team. You will be able to receive and accept jobs once your account is fully verified and approved.
+            </p>
+          </GlassCard>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {displayedRequests.map(req => (
           <motion.div key={req._id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <GlassCard className="h-full flex flex-col justify-between hover:border-indigo-500/30 transition-colors">
@@ -125,6 +178,11 @@ const CaptainDashboard = () => {
                   <div className="bg-white/5 p-3 rounded-xl">
                     <p className="text-xs opacity-60 mb-1">Client</p>
                     <p className="font-medium text-sm">{req.user?.name || 'Unknown'}</p>
+                    {req.status !== 'requested' && req.user?.phone && (
+                      <p className="text-xs text-indigo-400 mt-1 flex items-center gap-1">
+                        <FiPhone className="text-[10px]" /> {req.user.phone}
+                      </p>
+                    )}
                   </div>
                   <div className="bg-white/5 p-3 rounded-xl">
                     <p className="text-xs opacity-60 mb-1">Payout</p>
@@ -178,6 +236,7 @@ const CaptainDashboard = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* History & Earnings Section */}
       <div className="mt-12 mb-8">
@@ -188,15 +247,14 @@ const CaptainDashboard = () => {
             <p className="text-5xl font-display font-bold text-gradient mb-6">
               ${(user?.earnings || 0).toFixed(2)}
             </p>
-            
-            <button 
+
+            <button
               onClick={handleWithdrawClick}
               disabled={!user?.earnings || user.earnings <= 0}
-              className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${
-                (!user?.earnings || user.earnings <= 0) 
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 shadow-none' 
-                : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20 cursor-pointer'
-              }`}
+              className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${(!user?.earnings || user.earnings <= 0)
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 shadow-none'
+                  : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20 cursor-pointer'
+                }`}
             >
               Withdraw to Bank
             </button>
@@ -216,7 +274,7 @@ const CaptainDashboard = () => {
                     </div>
                     <div className="text-right flex flex-col items-end">
                       <p className="font-bold text-indigo-400">
-                        ${(req.price * 0.8).toFixed(2)} 
+                        ${(req.price * 0.8).toFixed(2)}
                         <span className="text-[10px] opacity-50 font-normal ml-1">(incl. 20% fee)</span>
                       </p>
                       {req.paymentStatus === 'paid' ? (
@@ -232,12 +290,17 @@ const CaptainDashboard = () => {
           </GlassCard>
         </div>
       </div>
-      
-      <WithdrawalModal 
-        isOpen={isWithdrawalModalOpen} 
-        onClose={() => setIsWithdrawalModalOpen(false)} 
-        user={user} 
-        onSuccess={handleWithdrawSuccess} 
+
+      <WithdrawalModal
+        isOpen={isWithdrawalModalOpen}
+        onClose={() => setIsWithdrawalModalOpen(false)}
+        user={user}
+        onSuccess={handleWithdrawSuccess}
+      />
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
       />
     </div>
   );

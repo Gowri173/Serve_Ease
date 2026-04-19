@@ -41,6 +41,35 @@ const bookingSchema = new mongoose.Schema({
   paymentIntentId: {
     type: String
   },
+  // New fields for enhanced features
+  captainLocation: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  estimatedArrival: {
+    type: Date
+  },
+  actualArrival: {
+    type: Date
+  },
+  startedAt: {
+    type: Date
+  },
+  completedAt: {
+    type: Date
+  },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
+  review: {
+    type: String,
+    maxlength: 500
+  },
+  reviewDate: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

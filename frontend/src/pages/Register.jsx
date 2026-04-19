@@ -8,8 +8,10 @@ import { motion } from 'framer-motion';
 import GlassCard from '../components/GlassCard';
 
 const Register = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', serviceType: 'Plumbing' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '', serviceType: '', customService: '' });
   const [role, setRole] = useState('user');
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -21,13 +23,58 @@ const Register = () => {
     if (roleParam === 'captain') setRole('captain');
   }, [location]);
 
+  useEffect(() => {
+    if (role === 'captain') {
+      fetchServices();
+    }
+  }, [role]);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/services');
+      setServices(data);
+      if (data.length > 0) {
+        setFormData(prev => ({ ...prev, serviceType: data[0].name }));
+      }
+    } catch (error) {
+      toast.error('Failed to load services');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (role === 'captain') {
+        if (!formData.serviceType) {
+          toast.error('Please select a service');
+          return;
+        }
+        if (formData.serviceType === 'OTHER' && !formData.customService.trim()) {
+          toast.error('Please enter a custom service name');
+          return;
+        }
+      }
+
       const endpoint = role === 'captain' ? '/auth/register/captain' : '/auth/register/user';
-      const { data } = await api.post(endpoint, { ...formData, role });
+      const submitData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        role
+      };
+
+      if (role === 'captain') {
+        submitData.serviceType = formData.serviceType === 'OTHER' ? formData.customService : formData.serviceType;
+        submitData.isCustomService = formData.serviceType === 'OTHER';
+      }
+
+      const { data } = await api.post(endpoint, submitData);
       dispatch(setCredentials(data));
       toast.success('Registration successful!');
       navigate(data.role === 'captain' ? '/captain-dashboard' : '/dashboard');
@@ -66,19 +113,43 @@ const Register = () => {
               <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-4 py-3" placeholder="you@example.com" required />
             </div>
             <div>
+              <label className="block text-sm font-medium opacity-80 mb-2">Phone Number</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full px-4 py-3" placeholder="+1234567890" required />
+            </div>
+            <div>
               <label className="block text-sm font-medium opacity-80 mb-2">Password</label>
               <input type="password" name="password" value={formData.password} onChange={handleChange} className="w-full px-4 py-3" placeholder="••••••••" required />
             </div>
 
             {role === 'captain' && (
-              <div>
-                <label className="block text-sm font-medium opacity-80 mb-2">Service Specialization</label>
-                <select name="serviceType" value={formData.serviceType} onChange={handleChange} className="w-full px-4 py-3">
-                  <option value="Plumbing">Plumbing</option>
-                  <option value="Cleaning">Cleaning</option>
-                  <option value="Electrical">Electrical</option>
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium opacity-80 mb-2">Service Specialization</label>
+                  <select name="serviceType" value={formData.serviceType} onChange={handleChange} className="w-full px-4 py-3" disabled={loading}>
+                    <option value="">Select a service...</option>
+                    {services.map(service => (
+                      <option key={service._id} value={service.name}>{service.name}</option>
+                    ))}
+                    <option value="OTHER">Other (Custom)</option>
+                  </select>
+                </div>
+
+                {formData.serviceType === 'OTHER' && (
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                    <label className="block text-sm font-medium opacity-80 mb-2">Custom Service Name</label>
+                    <input
+                      type="text"
+                      name="customService"
+                      value={formData.customService}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3"
+                      placeholder="e.g., Pet Grooming, HVAC Repair, etc."
+                      required
+                    />
+                    <p className="text-xs opacity-60 mt-1">This will be added as a new service for future registrations</p>
+                  </motion.div>
+                )}
+              </>
             )}
 
             <button type="submit" className="btn-primary w-full mt-8 py-3 !bg-purple-600 hover:!bg-purple-700">

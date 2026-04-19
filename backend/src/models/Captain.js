@@ -43,13 +43,50 @@ const captainSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // New fields for enhanced features
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
+  },
+  profileImage: {
+    type: String
+  },
+  phone: {
+    type: String
+  },
+  experience: {
+    type: Number, // years of experience
+    default: 0
+  },
+  completedJobs: {
+    type: Number,
+    default: 0
+  },
+  currentLocation: {
+    lat: { type: Number },
+    lng: { type: Number }
+  },
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+  lastActive: {
+    type: Date,
+    default: Date.now
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-captainSchema.pre('save', async function() {
+captainSchema.pre('save', async function () {
   if (!this.isModified('password')) {
     return;
   }
@@ -58,7 +95,7 @@ captainSchema.pre('save', async function() {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-captainSchema.methods.matchPassword = async function(enteredPassword) {
+captainSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

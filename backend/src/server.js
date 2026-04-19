@@ -20,7 +20,7 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
-  
+
   // Join role-specific rooms (e.g., captain_123, user_456)
   socket.on('join', (userId) => {
     socket.join(userId);
@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
 // Pass io to app for use in controllers
 app.set('io', io);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 server.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);

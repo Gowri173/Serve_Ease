@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FiStar, FiShield, FiSearch, FiMapPin, FiTrendingUp, FiClock, FiUsers, FiMessageSquare, FiZap, FiDroplet, FiWind, FiScissors, FiTool } from 'react-icons/fi';
 import { BsStars } from 'react-icons/bs';
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const targetSection = params.get('scrollTo');
+
+    if (targetSection) {
+      const element = document.getElementById(targetSection);
+      if (element) {
+        window.setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
+    }
+  }, [location.search]);
 
   const services = [
     { title: 'Electrician', price: 'From ₹299', icon: <FiZap />, bg: 'bg-purple-500', img: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800&q=80' },
@@ -144,7 +159,7 @@ const Home = () => {
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 w-full"
           >
             {trustIndicators.map((item, idx) => (
-              <div key={idx} className="bg-[#121626]/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 lg:p-5 flex items-center gap-3 lg:gap-4 hover:bg-white/5 transition-colors">
+              <div key={`trust-${idx}`} className="bg-[#121626]/60 backdrop-blur-md border border-white/5 rounded-2xl p-4 lg:p-5 flex items-center gap-3 lg:gap-4 hover:bg-white/5 transition-colors">
                 <div className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 rounded-full bg-[#1a1f35] border border-white/10 flex items-center justify-center text-[#8b5cf6] text-lg lg:text-xl">
                   {item.icon}
                 </div>
@@ -222,7 +237,7 @@ const Home = () => {
                   { title: 'Rating System', desc: 'Build your reputation' },
                   { title: '24/7 Support', desc: 'Always there to help' }
                 ].map((item, idx) => (
-                  <div key={idx} className="flex gap-4">
+                  <div key={`benefit-${idx}`} className="flex gap-4">
                     <div className="w-12 h-12 flex-shrink-0 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold">✓</div>
                     <div>
                       <h4 className="text-white font-bold mb-1">{item.title}</h4>
@@ -268,7 +283,7 @@ const Home = () => {
               { title: 'Our Values', desc: 'Trust, Quality, Transparency, and Customer Satisfaction are at the core of everything we do.' }
             ].map((item, idx) => (
               <motion.div
-                key={idx}
+                key={`about-${idx}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
@@ -325,7 +340,7 @@ const Home = () => {
               { name: 'Emergency Services', price: '+50%', features: ['24/7 availability', 'Priority dispatch', 'Express support', 'Premium professionals'] }
             ].map((plan, idx) => (
               <motion.div
-                key={idx}
+                key={`plan-${idx}`}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: idx * 0.1 }}
@@ -384,7 +399,7 @@ const Home = () => {
                   { title: 'Quality Assurance', desc: '4.8/5 rating from 100,000+ completed services' }
                 ].map((item, idx) => (
                   <motion.div
-                    key={idx}
+                    key={`why-${idx}`}
                     initial={{ opacity: 0, x: 20 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: idx * 0.1 }}

@@ -5,7 +5,10 @@ const {
   getMyBookings,
   getCaptainBookings,
   updateBookingStatus,
-  processMockPayment
+  processMockPayment,
+  submitRating,
+  getBookingTracking,
+  updateCaptainLocation
 } = require('../controllers/bookingController');
 const { protect, authorize } = require('../middlewares/authMiddleware');
 
@@ -23,5 +26,14 @@ router.route('/:id/status')
 
 router.route('/:id/pay')
   .post(protect, authorize('user'), processMockPayment);
+
+router.route('/:id/rate')
+  .post(protect, authorize('user'), submitRating);
+
+router.route('/:id/tracking')
+  .get(protect, getBookingTracking);
+
+router.route('/:id/location')
+  .put(protect, authorize('captain'), updateCaptainLocation);
 
 module.exports = router;
