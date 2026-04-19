@@ -48,14 +48,18 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
     try {
       if (role === 'captain') {
         if (!formData.serviceType) {
           toast.error('Please select a service');
+          setLoading(false);
           return;
         }
         if (formData.serviceType === 'OTHER' && !formData.customService.trim()) {
           toast.error('Please enter a custom service name');
+          setLoading(false);
           return;
         }
       }
@@ -80,6 +84,8 @@ const Register = () => {
       navigate(data.role === 'captain' ? '/captain-dashboard' : '/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -152,8 +158,8 @@ const Register = () => {
               </>
             )}
 
-            <button type="submit" className="btn-primary w-full mt-8 py-3 !bg-purple-600 hover:!bg-purple-700">
-              Register as {role.charAt(0).toUpperCase() + role.slice(1)}
+            <button type="submit" disabled={loading} className="btn-primary w-full mt-8 py-3 !bg-purple-600 hover:!bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? 'Registering...' : `Register as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
             </button>
           </form>
 
